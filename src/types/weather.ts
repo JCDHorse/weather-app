@@ -32,7 +32,7 @@ export interface WeatherApiResponse {
     humidity: number;
   };
   visibility: number;
-  wind: {
+  wind?: {
     speed: number;
     deg: number;
   };

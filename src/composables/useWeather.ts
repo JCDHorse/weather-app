@@ -122,21 +122,34 @@ export function useWeather() {
    */
   async function refreshAllWeather() {
     const locations = weatherData.value.map(data => data.location);
-    weatherData.value = [];
+    if (locations.length === 0) return;
     
-    // Fetch all locations concurrently for better performance
-    const results = await Promise.allSettled(
-      locations.map(location => fetchWeatherByCity(location))
-    );
+    loading.value = true;
     
-    // Only add successfully fetched weather data
-    results.forEach(result => {
-      if (result.status === 'fulfilled') {
-        weatherData.value.push(result.value);
+    try {
+      // Fetch all locations concurrently for better performance
+      const results = await Promise.allSettled(
+        locations.map(location => fetchWeatherByCity(location))
+      );
+      
+      // Only update with successfully fetched weather data
+      const newWeatherData: WeatherData[] = [];
+      results.forEach(result => {
+        if (result.status === 'fulfilled') {
+          newWeatherData.push(result.value);
+        }
+      });
+      
+      // Only update if we got at least some successful results
+      if (newWeatherData.length > 0) {
+        weatherData.value = newWeatherData;
+        saveLocationsToStorage();
       }
-    });
-    
-    saveLocationsToStorage();
+    } catch (err) {
+      error.value = 'Failed to refresh weather data';
+    } finally {
+      loading.value = false;
+    }
   }
 
   /**
