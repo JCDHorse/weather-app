@@ -1,7 +1,11 @@
 import type { WeatherApiResponse, WeatherData } from '../types/weather';
 
-const API_KEY = import.meta.env.VITE_WEATHER_API_KEY || 'demo';
+const API_KEY = import.meta.env.VITE_WEATHER_API_KEY;
 const BASE_URL = 'https://api.openweathermap.org/data/2.5';
+
+if (!API_KEY && import.meta.env.PROD) {
+  console.error('VITE_WEATHER_API_KEY is not configured. Please add it to your .env file.');
+}
 
 export class WeatherApiError extends Error {
   code?: string;
@@ -62,7 +66,7 @@ function transformWeatherData(data: WeatherApiResponse): WeatherData {
     description: weather.description,
     icon: weather.icon,
     humidity: data.main.humidity,
-    windSpeed: Math.round(data.wind.speed * 3.6), // Convert m/s to km/h
+    windSpeed: Math.round((data.wind?.speed || 0) * 3.6), // Convert m/s to km/h
     country: data.sys.country,
     timestamp: Date.now(),
   };

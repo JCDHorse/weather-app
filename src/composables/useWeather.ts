@@ -81,22 +81,23 @@ export function useWeather() {
       return false;
     }
 
-    // Check for duplicates
-    const locationLower = location.toLowerCase().trim();
-    const exists = weatherData.value.some(
-      data => data.location.toLowerCase() === locationLower
-    );
-
-    if (exists) {
-      error.value = 'This location is already added';
-      return false;
-    }
+    // Check for duplicates by ID (more reliable than name comparison)
+    // We'll check after fetching to get the actual city ID from API
+    const locationTrimmed = location.trim();
 
     loading.value = true;
     error.value = null;
 
     try {
-      const data = await fetchWeatherByCity(location);
+      const data = await fetchWeatherByCity(locationTrimmed);
+      
+      // Check if this city ID already exists
+      const exists = weatherData.value.some(item => item.id === data.id);
+      if (exists) {
+        error.value = 'This location is already added';
+        return false;
+      }
+      
       weatherData.value.push(data);
       saveLocationsToStorage();
       return true;
@@ -123,9 +124,19 @@ export function useWeather() {
     const locations = weatherData.value.map(data => data.location);
     weatherData.value = [];
     
-    for (const location of locations) {
-      await addLocation(location);
-    }
+    // Fetch all locations concurrently for better performance
+    const results = await Promise.allSettled(
+      locations.map(location => fetchWeatherByCity(location))
+    );
+    
+    // Only add successfully fetched weather data
+    results.forEach(result => {
+      if (result.status === 'fulfilled') {
+        weatherData.value.push(result.value);
+      }
+    });
+    
+    saveLocationsToStorage();
   }
 
   /**
